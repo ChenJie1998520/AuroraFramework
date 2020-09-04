@@ -189,7 +189,7 @@ namespace AuroraFramework.Forms
 
         #region Hidden Form Properties
         [Browsable(false), EditorBrowsable(EditorBrowsableState.Never), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        protected new string Text
+        public override string Text
         {
             get { return base.Text; }
             set
@@ -768,34 +768,37 @@ namespace AuroraFramework.Forms
                 }
 
                 //绘制标题栏标题文本
-                var textOffsetX = this.TitleBarStyle.OffsetX + this.GetFormBorderWidth();
-
-                Font font = this.TitleBarStyle.Font ?? this.Font;
-                Size fontSize = Size.Ceiling(graphics.MeasureString(this.TitleBarStyle.Title, font));
-
-                if (this.TitleBarStyle.TextAlign == AuroraTitleBarTextAlignment.Center)
+                if (this.TitleBarStyle.ShowTitle)
                 {
-                    //标题栏文本居中对齐
-                    textOffsetX = (this.Width - fontSize.Width) / 2;
-                }
-                else if (this.TitleBarStyle.TextAlign == AuroraTitleBarTextAlignment.Left)
-                {
-                    if (this.ShowIcon && this.Icon != null && this.TitleBarStyle.ShowCrystalLogo)
+                    var textOffsetX = this.TitleBarStyle.OffsetX + this.GetFormBorderWidth();
+
+                    Font font = this.TitleBarStyle.Font ?? this.Font;
+                    Size fontSize = Size.Ceiling(graphics.MeasureString(this.TitleBarStyle.Title, font));
+
+                    if (this.TitleBarStyle.TextAlign == AuroraTitleBarTextAlignment.Center)
                     {
-                        //显示水晶Logo
-                        textOffsetX = this.CrystalLogoRect.Right + 5;
+                        //标题栏文本居中对齐
+                        textOffsetX = (this.Width - fontSize.Width) / 2;
                     }
-                    else if (this.ShowIcon && this.Icon != null)
+                    else if (this.TitleBarStyle.TextAlign == AuroraTitleBarTextAlignment.Left)
                     {
-                        //显示Logo
-                        textOffsetX = this.LogoRect.Right + 5;
+                        if (this.ShowIcon && this.Icon != null && this.TitleBarStyle.ShowCrystalLogo)
+                        {
+                            //显示水晶Logo
+                            textOffsetX = this.CrystalLogoRect.Right + 5;
+                        }
+                        else if (this.ShowIcon && this.Icon != null)
+                        {
+                            //显示Logo
+                            textOffsetX = this.LogoRect.Right + 5;
+                        }
                     }
-                }
 
-                Color foreColor = this.TitleBarStyle.ForeColor.IsEmpty ? this.ForeColor : this.TitleBarStyle.ForeColor;
-                using (var brush = new SolidBrush(foreColor))
-                {
-                    graphics.DrawString(this.TitleBarStyle.Title, font, brush, textOffsetX, (this.TitleBarStyle.Height - fontSize.Height) / 2 + this.GetFormBorderWidth());
+                    Color foreColor = this.TitleBarStyle.ForeColor.IsEmpty ? this.ForeColor : this.TitleBarStyle.ForeColor;
+                    using (var brush = new SolidBrush(foreColor))
+                    {
+                        graphics.DrawString(this.TitleBarStyle.Title, font, brush, textOffsetX, (this.TitleBarStyle.Height - fontSize.Height) / 2 + this.GetFormBorderWidth());
+                    }
                 }
             }
         }

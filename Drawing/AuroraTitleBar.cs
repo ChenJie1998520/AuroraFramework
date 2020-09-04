@@ -50,6 +50,16 @@
             set { this._Title = value; }
         }
 
+        private bool _ShowTitle = true;
+        /// <summary>
+        /// 是否显示标题栏文本
+        /// </summary>
+        [System.ComponentModel.Description("是否显示标题栏文本")]
+        public bool ShowTitle
+        {
+            get { return this._ShowTitle; }
+            set { this._ShowTitle = value; }
+        }
 
         private AuroraFramework.Forms.AuroraTitleBarTextAlignment _TextAlign = Forms.AuroraTitleBarTextAlignment.Center;
         /// <summary>
@@ -142,6 +152,7 @@
         {
             this.BackgroundColor = new AuroraGradientColor(System.Drawing.Color.White);
             this.Height = 32;
+            this.ShowTitle = true;
             this.TextAlign = AuroraFramework.Forms.AuroraTitleBarTextAlignment.Center;
             this.Font = System.Drawing.SystemFonts.CaptionFont;
             this.ForeColor = System.Drawing.SystemColors.ControlText;
