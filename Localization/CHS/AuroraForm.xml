@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<root>
+  <Localization>
+    <Key>Text</Key>
+    <Value>New Text</Value>
+  </Localization>
+  <Localization>
+    <Key>StatusOff</Key>
+    <Value>Off</Value>
+  </Localization>
+</root>
