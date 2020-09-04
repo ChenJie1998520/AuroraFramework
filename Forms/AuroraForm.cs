@@ -14,6 +14,23 @@ namespace AuroraFramework.Forms
         #region Properties
 
         #region Aurora Style
+        private int _Radius = 0;
+        /// <summary>
+        /// 窗体圆角半径
+        /// </summary>
+        [Category("Aurora Style"), Description("窗体圆角半径")]
+        public int Radius
+        {
+            get { return this._Radius; }
+            set
+            {
+                if (value >= 0)
+                    this._Radius = value;
+                this.SetFormRoundRectRgn(this, this.Radius);
+                this.Invalidate();
+            }
+        }
+
         private AuroraTitleBar _TitleBarStyle = null;
         /// <summary>
         /// 标题栏
@@ -387,12 +404,31 @@ namespace AuroraFramework.Forms
                 return;
             Color borderColor = this.BorderColor.IsEmpty ? Color.LightGray : this.BorderColor;
 
-            Rectangle rectangle = new Rectangle(this.ClientRectangle.X, this.ClientRectangle.Y, this.ClientRectangle.Width, this.ClientRectangle.Height);
-
-            if (this.BorderStyle == AuroraFormBorderStyle.All)
-                ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle, borderColor, ButtonBorderStyle.Solid);
-            else
+            if(this.BorderStyle == AuroraFormBorderStyle.None)
+            {
+                //无边框
                 ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle, borderColor, ButtonBorderStyle.None);
+            }
+            else
+            {
+                if (this.Radius > 0)
+                {
+                    //圆角边框
+                    Rectangle rect = this.ClientRectangle;
+                    using (GraphicsPath path = AuroraGraphics.CreateGraphicsPath(this.ClientRectangle, this.Radius, AuroraFramework.Controls.AuroraRoundStyle.All, true))
+                    {
+                        using (Pen pen = new Pen(borderColor))
+                        {
+                            e.Graphics.DrawPath(pen, path);
+                        }
+                    }
+                }
+                else
+                {
+                    //矩形边框
+                    ControlPaint.DrawBorder(e.Graphics, this.ClientRectangle, borderColor, ButtonBorderStyle.Solid);
+                }
+            }
             #endregion
         }
 
@@ -491,10 +527,10 @@ namespace AuroraFramework.Forms
 
             int top = this.TitleBarStyle.Height <= 5 ? 5 : this.TitleBarStyle.Height;
 
-            if (e.X > 10 && e.X < ClientSize.Width - 10 && e.Y > top && e.Y <= ClientSize.Height - 10)
+            if (e.X > 5 && e.X < ClientSize.Width - 5 && e.Y > top && e.Y <= ClientSize.Height - 5)
             {
                 //鼠标在客户区域
-                if (this.CanMove)
+                if (this.CanMove && this.WindowState != FormWindowState.Maximized)
                 {
                     //释放鼠标焦点捕获
                     Win32.ReleaseCapture();
@@ -580,7 +616,7 @@ namespace AuroraFramework.Forms
             this.MaximizeBoxState = AuroraControlBoxStatus.Default;
             this.MinimizeBoxState = AuroraControlBoxStatus.Default;
 
-            if (!this.CloseBoxRect.IsEmpty && this.CloseBoxRect.Contains(e.Location) && e.Button == MouseButtons.Left )
+            if (!this.CloseBoxRect.IsEmpty && this.CloseBoxRect.Contains(e.Location) && e.Button == MouseButtons.Left)
             {
                 base.Close();
                 this.CloseBoxState = AuroraControlBoxStatus.Default;
@@ -588,7 +624,7 @@ namespace AuroraFramework.Forms
 
             if (!this.MaximizeBoxRect.IsEmpty && this.MaximizeBoxRect.Contains(e.Location) && e.Button == MouseButtons.Left)
             {
-                this.WindowState = this.WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+                this.MaxNormalSwitch();
                 this.MaximizeBoxState = AuroraControlBoxStatus.Default;
             }
 
@@ -675,6 +711,11 @@ namespace AuroraFramework.Forms
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
+
+            if(this.WindowState == FormWindowState.Maximized)
+                this.SetFormRoundRectRgn(this, 0);
+            else
+                this.SetFormRoundRectRgn(this, this.Radius);
 
             this.SetTitleBarRect();
         }
@@ -983,6 +1024,19 @@ namespace AuroraFramework.Forms
 
         #region Form Method
         /// <summary>
+        /// 设置窗体的圆角矩形
+        /// </summary>
+        /// <param name="form">需要设置的窗体</param>
+        /// <param name="rgnRadius">圆角矩形的半径</param>
+        private void SetFormRoundRectRgn(Form form, int rgnRadius)
+        {
+            int hRgn = 0;
+            hRgn = Win32.CreateRoundRectRgn(0, 0, form.Width + 1, form.Height + 1, rgnRadius, rgnRadius);
+            Win32.SetWindowRgn(form.Handle, hRgn, true);
+            Win32.DeleteObject(hRgn);
+        }
+
+        /// <summary>
         /// 获取窗体边框宽度
         /// </summary>
         /// <returns></returns>
@@ -1013,16 +1067,62 @@ namespace AuroraFramework.Forms
             this.SetTitleBarRect();
             this.Invalidate();
         }
+
+        /// <summary>
+        /// 最大化和正常状态窗口切换
+        /// </summary>
+        private void MaxNormalSwitch()
+        {
+            if (this.WindowState == FormWindowState.Maximized)
+            {
+                //如果当前状态是最大化状态 则窗体需要恢复默认大小
+                this.WindowState = FormWindowState.Normal;
+            }
+            else
+            {
+                //防止遮挡任务栏
+                this.MaximumSize = new Size(Screen.PrimaryScreen.WorkingArea.Width, Screen.PrimaryScreen.WorkingArea.Height);
+                this.WindowState = FormWindowState.Maximized;
+            }
+        }
         #endregion
 
         #region WndProc
+        /// <summary>
+        /// 消息响应处理
+        /// </summary>
+        const int WM_NCHITTEST = 0x0084;
+        /// <summary>
+        /// 左边界
+        /// </summary>
         const int HTLEFT = 10;
+        /// <summary>
+        /// 右边界
+        /// </summary>
         const int HTRIGHT = 11;
+        /// <summary>
+        /// 上边界
+        /// </summary>
         const int HTTOP = 12;
+        /// <summary>
+        /// 左上角
+        /// </summary>
         const int HTTOPLEFT = 13;
+        /// <summary>
+        /// 右上角
+        /// </summary>
         const int HTTOPRIGHT = 14;
+        /// <summary>
+        /// 下边界
+        /// </summary>
         const int HTBOTTOM = 15;
+        /// <summary>
+        /// 左下角
+        /// </summary>
         const int HTBOTTOMLEFT = 0x10;
+        /// <summary>
+        /// 右下角
+        /// </summary>
         const int HTBOTTOMRIGHT = 17;
 
         protected override void WndProc(ref Message m)
@@ -1041,104 +1141,102 @@ namespace AuroraFramework.Forms
 
             switch (m.Msg)
             {
-                case 0x0084:
+                case WM_NCHITTEST:
                     base.WndProc(ref m);
-                    if (this.CanResize)
+                    if (this.CanResize && WindowState != FormWindowState.Maximized)
                     {
-                        Point sidePoint = new Point((int)m.LParam & 0xFFFF, (int)m.LParam >> 16 & 0xFFFF);
-                        sidePoint = PointToClient(sidePoint);
-                        if (sidePoint.X <= 10)
+                        Point mouseLocation = new Point((int)m.LParam & 0xFFFF, (int)m.LParam >> 16 & 0xFFFF);
+                        mouseLocation = PointToClient(mouseLocation);
+                        if (mouseLocation.X <= 5)
                         {
-                            if (sidePoint.Y <= 5)
+                            if (mouseLocation.Y <= 5)
                                 m.Result = (IntPtr)HTTOPLEFT;
-                            else if (sidePoint.Y >= ClientSize.Height - 5)
+                            else if (mouseLocation.Y >= ClientSize.Height - 5)
                                 m.Result = (IntPtr)HTBOTTOMLEFT;
-                            else m.Result = (IntPtr)HTLEFT;
+                            else
+                                m.Result = (IntPtr)HTLEFT;
                         }
-                        else if (sidePoint.X >= ClientSize.Width - 10)
+                        else if (mouseLocation.X >= ClientSize.Width - 5)
                         {
-                            if (sidePoint.Y <= 5)
+                            if (mouseLocation.Y <= 5)
                                 m.Result = (IntPtr)HTTOPRIGHT;
-                            else if (sidePoint.Y >= ClientSize.Height - 10)
+                            else if (mouseLocation.Y >= ClientSize.Height - 5)
                                 m.Result = (IntPtr)HTBOTTOMRIGHT;
-                            else m.Result = (IntPtr)HTRIGHT;
+                            else
+                                m.Result = (IntPtr)HTRIGHT;
                         }
-                        else if (sidePoint.Y <= 5)
+                        else if (mouseLocation.Y <= 5)
                         {
                             m.Result = (IntPtr)HTTOP;
                         }
-                        else if (sidePoint.Y >= ClientSize.Height - 10)
+                        else if (mouseLocation.Y >= ClientSize.Height - 5)
                         {
                             m.Result = (IntPtr)HTBOTTOM;
                         }
                     }
                     break;
-                //case 0x0201: //鼠标左键按下的消息
-                //    Point cPoint = new Point((int)m.LParam & 0xFFFF, (int)m.LParam >> 16 & 0xFFFF);
-                //    Rectangle captionRect = new Rectangle(0, 0, this.Width, this.AuroraTitleBar.Height);
-                //    if (!this.CloseBoxRect.Contains(cPoint) && !this.MaximizeBoxRect.Contains(cPoint)
-                //        && !this.MinimizeBoxRect.Contains(cPoint) && !this.CrystalLogoRect.Contains(cPoint)
-                //        && !this.LogoRect.Contains(cPoint) && captionRect.Contains(cPoint))
-                //    {
-                //        bool flag = false;
-                //        //foreach (CustomSysControlBox controlBoxButton in this.SysControlBoxes)
-                //        //{
-                //        //    if (!controlBoxButton.Visibale) continue;
+                    {
+                        //case 0x0201: //鼠标左键按下的消息
+                        //    Point cPoint = new Point((int)m.LParam & 0xFFFF, (int)m.LParam >> 16 & 0xFFFF);
+                        //    Rectangle captionRect = new Rectangle(0, 0, this.Width, this.AuroraTitleBar.Height);
+                        //    if (!this.CloseBoxRect.Contains(cPoint) && !this.MaximizeBoxRect.Contains(cPoint)
+                        //        && !this.MinimizeBoxRect.Contains(cPoint) && !this.CrystalLogoRect.Contains(cPoint)
+                        //        && !this.LogoRect.Contains(cPoint) && captionRect.Contains(cPoint))
+                        //    {
+                        //        bool flag = false;
+                        //        //foreach (CustomSysControlBox controlBoxButton in this.SysControlBoxes)
+                        //        //{
+                        //        //    if (!controlBoxButton.Visibale) continue;
 
-                //        //    Rectangle rect = this.GetControlBoxButtonRectangle(controlBoxButton);
-                //        //    if (rect.Contains(cPoint))
-                //        //    {
-                //        //        flag = true;
-                //        //        break;
-                //        //    }
-                //        //}
+                        //        //    Rectangle rect = this.GetControlBoxButtonRectangle(controlBoxButton);
+                        //        //    if (rect.Contains(cPoint))
+                        //        //    {
+                        //        //        flag = true;
+                        //        //        break;
+                        //        //    }
+                        //        //}
 
-                //        if (!flag)
-                //        {
-                //            m.Msg = 0x00A1;         //更改消息为非客户区按下鼠标   
-                //            m.LParam = IntPtr.Zero; //默认值   
-                //            m.WParam = new IntPtr(2);//鼠标放在标题栏内   
-                //            base.WndProc(ref m);
-                //        }
-                //    }
-                //    else
-                //    {
-                //        m.Msg = 0x00A1;         //更改消息为非客户区按下鼠标   
-                //        m.LParam = IntPtr.Zero; //默认值   
-                //        m.WParam = new IntPtr(2);//鼠标放在标题栏内   
-                //        base.WndProc(ref m);
-                //    }
-                //    break;
+                        //        if (!flag)
+                        //        {
+                        //            m.Msg = 0x00A1;         //更改消息为非客户区按下鼠标   
+                        //            m.LParam = IntPtr.Zero; //默认值   
+                        //            m.WParam = new IntPtr(2);//鼠标放在标题栏内   
+                        //            base.WndProc(ref m);
+                        //        }
+                        //    }
+                        //    else
+                        //    {
+                        //        m.Msg = 0x00A1;         //更改消息为非客户区按下鼠标   
+                        //        m.LParam = IntPtr.Zero; //默认值   
+                        //        m.WParam = new IntPtr(2);//鼠标放在标题栏内   
+                        //        base.WndProc(ref m);
+                        //    }
+                        //    break;
+                    }
                 case 0x0203://双击左键
                     base.WndProc(ref m);
-                    Point point = new Point((int)m.LParam & 0xFFFF, (int)m.LParam >> 16 & 0xFFFF);
-                    Rectangle controlRect = new Rectangle(0, 0, this.Width, this.TitleBarStyle.Height);
-                    if (!this.CloseBoxRect.Contains(point) && !this.MaximizeBoxRect.Contains(point)
-                        && !this.MinimizeBoxRect.Contains(point) && controlRect.Contains(point))
+                    if (this.CanResize && this.MaximizeBox)
                     {
-                        bool isContain = false;
-                        foreach (AuroraCustomControlBox controlBox in this.CustomControlBoxes)
+                        Point point = new Point((int)m.LParam & 0xFFFF, (int)m.LParam >> 16 & 0xFFFF);
+                        Rectangle titleRect = new Rectangle(0, 0, this.Width, this.TitleBarStyle.Height);
+                        if (!this.CloseBoxRect.Contains(point) && !this.MaximizeBoxRect.Contains(point)
+                            && !this.MinimizeBoxRect.Contains(point) && titleRect.Contains(point))
                         {
-                            if (!controlBox.Visibale) continue;
+                            bool isContain = false;
+                            foreach (AuroraCustomControlBox controlBox in this.CustomControlBoxes)
+                            {
+                                if (!controlBox.Visibale) continue;
 
-                            Rectangle controlBoxRect = this.GetAuroraCustomControlBoxRectangle(controlBox);
-                            if (controlBoxRect.Contains(point))
-                            {
-                                isContain = true;
-                                break;
-                            }
-                        }
-                        if (!isContain)
-                        {
-                            if (this.CanResize)
-                            {
-                                if (WindowState != FormWindowState.Minimized)
+                                Rectangle controlBoxRect = this.GetAuroraCustomControlBoxRectangle(controlBox);
+                                if (controlBoxRect.Contains(point))
                                 {
-                                    if (WindowState == FormWindowState.Maximized)
-                                        WindowState = FormWindowState.Normal;
-                                    else
-                                        WindowState = FormWindowState.Maximized;
+                                    isContain = true;
+                                    break;
                                 }
+                            }
+                            if (!isContain && WindowState != FormWindowState.Minimized)
+                            {
+                                this.MaxNormalSwitch();
                             }
                         }
                     }

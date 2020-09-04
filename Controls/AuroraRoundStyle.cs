@@ -1,7 +1,7 @@
 ﻿namespace AuroraFramework.Controls
 {
     /// <summary>
-    /// 路径样式
+    /// 圆角路径样式
     /// </summary>
     public enum AuroraRoundStyle
     {
