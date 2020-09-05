@@ -284,26 +284,28 @@ namespace AuroraFramework.Controls
         private void DrawBackGround(Graphics graphics)
         {
             AuroraGraphics.InitializeGraphics(graphics);
-            Rectangle rect = new Rectangle(0, 0, this.Width, this.Height);
+            Rectangle rect = new Rectangle(0, 0, this.Size.Width - 1, this.Size.Height - 1);
 
             switch (this._ControlStatus)
             {
                 case AuroraControlStatus.Default:
                     if (this.FlatStyle != FlatStyle.Flat)
                     {
-                        AuroraGraphics.FillRectangle(graphics, rect, this.DefaultControlColor);
-                        AuroraGraphics.DrawBorder(graphics, rect, this.Radius > 0 ? AuroraRoundStyle.All : AuroraRoundStyle.None, this.Radius, this.BorderColor);
+                        AuroraGraphics.FillRectangle(graphics, rect, this.DefaultControlColor, this.Radius);
                     }
                     break;
                 case AuroraControlStatus.Hover:
-                    AuroraGraphics.FillRectangle(graphics, rect, this.HoverControlColor);
-                    AuroraGraphics.DrawBorder(graphics, rect, this.Radius > 0 ? AuroraRoundStyle.All : AuroraRoundStyle.None, this.Radius, this.BorderColor);
+                    AuroraGraphics.FillRectangle(graphics, rect, this.HoverControlColor, this.Radius);
                     break;
                 case AuroraControlStatus.Pressed:
-                    AuroraGraphics.FillRectangle(graphics, rect, this.PressedControlColor);
-                    AuroraGraphics.DrawBorder(graphics, rect, this.Radius > 0 ? AuroraRoundStyle.All : AuroraRoundStyle.None, this.Radius, this.BorderColor);
+                    AuroraGraphics.FillRectangle(graphics, rect, this.PressedControlColor, this.Radius);
                     break;
             }
+
+            //Draw Border
+            rect.Width -= 1;
+            rect.Height -= 1;
+            AuroraGraphics.DrawPathBorder(graphics, rect, this.Radius, this.BorderColor, 1);
         }
 
         /// <summary>
@@ -343,11 +345,11 @@ namespace AuroraFramework.Controls
             switch (this.TextImageRelation)
             {
                 case TextImageRelation.Overlay:
-                    imageRect = new Rectangle(1, (this.Height - this.ImageSize.Height) / 2, this.ImageSize.Width, this.ImageSize.Height);
+                    imageRect = new Rectangle((this.Width - this.ImageSize.Width) / 2, (this.Height - this.ImageSize.Height) / 2, this.ImageSize.Width, this.ImageSize.Height);
                     textRect = new Rectangle(1, 1, this.Width - this.ContentMargin - 1, this.Height);
                     break;
                 case TextImageRelation.ImageAboveText:
-                    imageRect = new Rectangle((this.Width - this.ImageSize.Width) / 2, 1, this.ImageSize.Width, this.ImageSize.Height);
+                    imageRect = new Rectangle((this.Width - this.ImageSize.Width) / 2, (this.Height-this.ImageSize.Height-textSize.Height)/2, this.ImageSize.Width, this.ImageSize.Height);
                     textRect = new Rectangle(1, imageRect.Bottom, this.Width - this.ContentMargin - 1, this.Height - imageRect.Bottom);
                     break;
                 case TextImageRelation.ImageBeforeText:
@@ -355,8 +357,8 @@ namespace AuroraFramework.Controls
                     textRect = new Rectangle(imageRect.Right + this.ContentMargin, 1, textWidth, this.Height);
                     break;
                 case TextImageRelation.TextAboveImage:
-                    imageRect = new Rectangle((this.Width - this.ImageSize.Width) / 2, this.Height - this.ImageSize.Height, this.ImageSize.Width, this.ImageSize.Height);
-                    textRect = new Rectangle(1, 1, this.Width - this.ContentMargin - 1, this.Height - imageRect.Y);
+                    imageRect = new Rectangle((this.Width - this.ImageSize.Width) / 2, (this.Height - textSize.Height) / 2, this.ImageSize.Width, this.ImageSize.Height);
+                    textRect = new Rectangle(1, (this.Height - this.ImageSize.Height - textSize.Height) / 2 - textSize.Height, this.Width - this.ContentMargin - 1, this.Height - imageRect.Y);   
                     break;
                 case TextImageRelation.TextBeforeImage:
                     imageRect = new Rectangle((this.Width + contentWidth) / 2 - this.ImageSize.Width, (this.Height - this.ImageSize.Height) / 2, this.ImageSize.Width, this.ImageSize.Height);
@@ -385,7 +387,9 @@ namespace AuroraFramework.Controls
                     this.Region.Dispose();
                 }
 
-                this.Region = new Region(AuroraGraphics.CreateGraphicsPath(rect, this.Radius, this.Radius > 0 ? AuroraRoundStyle.All : AuroraRoundStyle.None, false));
+                System.Drawing.Drawing2D.GraphicsPath graphicsPath = AuroraGraphics.GetGraphicsBezierPath(rect, this.Radius);
+
+                this.Region = new Region(graphicsPath);
             }
         }
     }
