@@ -26,7 +26,7 @@ namespace AuroraFramework.Forms
             {
                 if (value >= 0)
                     this._Radius = value;
-                this.SetFormRoundRectRgn(this, this.Radius);
+                this.SetWindowRegion(this, this.Radius);
                 this.Invalidate();
             }
         }
@@ -185,11 +185,47 @@ namespace AuroraFramework.Forms
             get { return this._CanCoverTitle; }
             set { this._CanCoverTitle = value; }
         }
+
+        private Padding _Padding = new Padding(0, 0, 0, 0);
+        /// <summary>
+        /// 获取或设置控件内的空白
+        /// </summary>
+        public new Padding Padding
+        {
+            get { return this._Padding; }
+            set
+            {
+                this._Padding = value;
+                base.Padding = new Padding(
+                    this.GetFormBorderWidth() + this.Padding.Left,
+                    this.TitleBarStyle.Height + this.Padding.Top,
+                    this.GetFormBorderWidth() + this.Padding.Right,
+                    this.GetFormBorderWidth() + this.Padding.Bottom
+                );
+                base.Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// 获取默认控件内的空白
+        /// </summary>
+        protected override Padding DefaultPadding
+        {
+            get
+            {
+                return new Padding(
+                    this.GetFormBorderWidth(),
+                    this.TitleBarStyle.Height,
+                    this.GetFormBorderWidth(),
+                    this.GetFormBorderWidth()
+                );
+            }
+        }
         #endregion
 
         #region Hidden Form Properties
         [Browsable(false), EditorBrowsable(EditorBrowsableState.Never), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public override string Text
+        public new string Text
         {
             get { return base.Text; }
             set
@@ -201,21 +237,21 @@ namespace AuroraFramework.Forms
         }
 
         [Browsable(false), EditorBrowsable(EditorBrowsableState.Never), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        protected new FormBorderStyle FormBorderStyle
+        public new FormBorderStyle FormBorderStyle
         {
             get { return base.FormBorderStyle; }
             set { base.FormBorderStyle = FormBorderStyle.None; }
         }
 
         [Browsable(false), EditorBrowsable(EditorBrowsableState.Never), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        protected new Color BackColor
+        public new Color BackColor
         {
             get { return base.BackColor; }
             set { base.BackColor = this.BackColor; }
         }
 
         [Browsable(false), EditorBrowsable(EditorBrowsableState.Never), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        protected new ImageLayout BackgroundImageLayout
+        public new ImageLayout BackgroundImageLayout
         {
             get { return base.BackgroundImageLayout; }
             set { base.BackgroundImageLayout = this.BackgroundImageLayout; }
@@ -357,6 +393,7 @@ namespace AuroraFramework.Forms
         {
             base.FormBorderStyle = FormBorderStyle.None;
             this.ControlBoxStyle.DefaultFlagColor = Color.Black;
+            this.TitleBarStyle = new AuroraTitleBar();
 
             base.SetStyle(
              ControlStyles.UserPaint |
@@ -366,9 +403,10 @@ namespace AuroraFramework.Forms
              ControlStyles.SupportsTransparentBackColor |
              ControlStyles.DoubleBuffer, true);
             base.UpdateStyles();
+
+            base.Padding = this.DefaultPadding;
             base.AutoScaleMode = AutoScaleMode.None;
         }
-
 
         #region Aurora Override
         protected override void OnPaintBackground(PaintEventArgs e)
@@ -713,9 +751,9 @@ namespace AuroraFramework.Forms
             base.OnSizeChanged(e);
 
             if(this.WindowState == FormWindowState.Maximized)
-                this.SetFormRoundRectRgn(this, 0);
+                this.SetWindowRegion(this, 0);
             else
-                this.SetFormRoundRectRgn(this, this.Radius);
+                this.SetWindowRegion(this, this.Radius);
 
             this.SetTitleBarRect();
         }
@@ -1031,7 +1069,7 @@ namespace AuroraFramework.Forms
         /// </summary>
         /// <param name="form">需要设置的窗体</param>
         /// <param name="rgnRadius">圆角矩形的半径</param>
-        private void SetFormRoundRectRgn(Form form, int rgnRadius)
+        private void SetWindowRegion(Form form, int rgnRadius)
         {
             int hRgn = 0;
             hRgn = Win32.CreateRoundRectRgn(0, 0, form.Width + 1, form.Height + 1, rgnRadius, rgnRadius);
@@ -1045,7 +1083,7 @@ namespace AuroraFramework.Forms
         /// <returns></returns>
         private int GetFormBorderWidth()
         {
-            if (this.WindowState == FormWindowState.Maximized || !this.BorderColor.IsEmpty || this.BorderStyle == AuroraFormBorderStyle.None)
+            if (this.WindowState == FormWindowState.Maximized || this.BorderColor.IsEmpty || this.BorderStyle == AuroraFormBorderStyle.None)
             {
                 return 0;
             }
@@ -1061,10 +1099,10 @@ namespace AuroraFramework.Forms
         private void SetFormPadding()
         {
             base.Padding = new Padding(
-                this.GetFormBorderWidth(),
-                this.TitleBarStyle.Height,
-                this.GetFormBorderWidth(),
-                this.GetFormBorderWidth()
+                this.GetFormBorderWidth() + this.Padding.Left,
+                this.TitleBarStyle.Height + this.Padding.Top,
+                this.GetFormBorderWidth() + this.Padding.Right,
+                this.GetFormBorderWidth() + this.Padding.Bottom
                 );
 
             this.SetTitleBarRect();
@@ -1091,43 +1129,52 @@ namespace AuroraFramework.Forms
         #endregion
 
         #region WndProc
-        /// <summary>
-        /// 消息响应处理
-        /// </summary>
-        const int WM_NCHITTEST = 0x0084;
-        /// <summary>
-        /// 左边界
-        /// </summary>
-        const int HTLEFT = 10;
-        /// <summary>
-        /// 右边界
-        /// </summary>
-        const int HTRIGHT = 11;
-        /// <summary>
-        /// 上边界
-        /// </summary>
-        const int HTTOP = 12;
-        /// <summary>
-        /// 左上角
-        /// </summary>
-        const int HTTOPLEFT = 13;
-        /// <summary>
-        /// 右上角
-        /// </summary>
-        const int HTTOPRIGHT = 14;
-        /// <summary>
-        /// 下边界
-        /// </summary>
-        const int HTBOTTOM = 15;
-        /// <summary>
-        /// 左下角
-        /// </summary>
-        const int HTBOTTOMLEFT = 0x10;
-        /// <summary>
-        /// 右下角
-        /// </summary>
-        const int HTBOTTOMRIGHT = 17;
 
+        #region Windows系统消息
+        private const int WM_PAINT = 0x000F;
+        private const int WM_CREATE = 0x0001;
+        private const int WM_NCCREATE = 0x0081;
+        private const int WM_NCCALCSIZE = 0x0083;
+        private const int WM_NCPAINT = 0x0085;           //绘制客户区
+        private const int WM_MOUSEMOVE = 0x0200;
+        private const int WM_NCMOUSEMOVE = 0x00A0;
+        private const int WM_NCACTIVATE = 0x0086;        //绘制非客户区（标题栏）
+        private const int WM_NCLBUTTONDOWN = 0x00A1;     //鼠标点击
+        private const int WM_NCHITTEST = 0x0084;         //命中测试
+        private const int WM_SYSCOMMAND = 0x112;         //系统菜单消息
+        private const int SC_CLOSE = 0xF060;             //关闭
+        private const int SC_MINIMIZE = 0xF020;          //最小化
+        private const int SC_MAXIMIZE = 0xF030;          //最大化
+        private const int SC_MOVE = 0xF010;
+        private const int SC_RESTORE = 0xF120;           //恢复窗口
+
+        //鼠标命中测试命中区域
+        private const int HTCLIENT = 1;                  
+        private const int HTCAPTION = 2;
+        private const int HTLEFT = 10;                   //左边界
+        private const int HTRIGHT = 11;                  //右边界
+        private const int HTTOP = 12;                    //上边界
+        private const int HTLEFTTOP = 13;                //左上角
+        private const int HTRIGHTTOP = 14;               //右上角
+        private const int HTBOTTOM = 15;                 //下边界
+        private const int HTLEFTBOTTOM = 16;             //左下角
+        private const int HTRIGHTBOTTOM = 17;            //右下角
+
+        //拖动窗口实现缩放
+        private const int WMSZ_LEFT = 0xF001;            //左边界
+        private const int WMSZ_RIGHT = 0xF002;           //左边界
+        private const int WMSZ_TOP = 0xF003;             //上边界
+        private const int WMSZ_LEFTTOP = 0xF004;         //左上角
+        private const int WMSZ_RIGHTTOP = 0xF005;        //右上角
+        private const int WMSZ_BOTTOM = 0xF006;          //下边界
+        private const int WMSZ_LEFTBOTTOM = 0xF007;      //左下角
+        private const int WMSZ_RIGHTBOTTOM = 0xF008;     //右下角
+        #endregion
+
+        /// <summary>
+        /// 重写WndProc方法，完成窗体重绘
+        /// </summary>
+        /// <param name="m">Windows消息</param>
         protected override void WndProc(ref Message m)
         {
             if (this.DesignMode)
@@ -1153,18 +1200,18 @@ namespace AuroraFramework.Forms
                         if (mouseLocation.X <= 5)
                         {
                             if (mouseLocation.Y <= 5)
-                                m.Result = (IntPtr)HTTOPLEFT;
+                                m.Result = (IntPtr)HTLEFTTOP;
                             else if (mouseLocation.Y >= ClientSize.Height - 5)
-                                m.Result = (IntPtr)HTBOTTOMLEFT;
+                                m.Result = (IntPtr)HTLEFTBOTTOM;
                             else
                                 m.Result = (IntPtr)HTLEFT;
                         }
                         else if (mouseLocation.X >= ClientSize.Width - 5)
                         {
                             if (mouseLocation.Y <= 5)
-                                m.Result = (IntPtr)HTTOPRIGHT;
+                                m.Result = (IntPtr)HTRIGHTTOP;
                             else if (mouseLocation.Y >= ClientSize.Height - 5)
-                                m.Result = (IntPtr)HTBOTTOMRIGHT;
+                                m.Result = (IntPtr)HTRIGHTBOTTOM;
                             else
                                 m.Result = (IntPtr)HTRIGHT;
                         }
@@ -1250,5 +1297,6 @@ namespace AuroraFramework.Forms
             }
         }
         #endregion
+
     }
 }
